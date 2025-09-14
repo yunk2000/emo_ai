@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - 银发守护者</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;500;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="back-btn" onclick="window.location.href='chat.html'">← 返回聊天</div>
+        <h2 style="text-align: center; margin-bottom: 2rem;">用户注册</h2>
+
+        <!-- 用户名输入组 -->
+        <div class="form-group">
+            <input type="text" id="username" placeholder="用户名" required onblur="debouncedCheckUsername()">
+            <div class="validation-status"></div>
+            <div class="error-message" id="username-error"></div>
+        </div>
+
+        <!-- 密码输入组 -->
+        <div class="form-group">
+            <input type="password" id="password" placeholder="密码" required>
+            <div class="error-message" id="password-error"></div>
+        </div>
+
+        <!-- 联系电话输入组 -->
+        <div class="form-group">
+            <input type="tel" id="phone" placeholder="联系电话" onblur="debouncedCheckPhone()">
+            <div class="validation-status"></div>
+            <div class="error-message" id="phone-error"></div>
+        </div>
+
+        <button onclick="handleRegister()" id="register-btn">立即注册</button>
+
+        <div class="nav-link">
+            已有账号？ <a href="login.html">立即登录</a>
+        </div>
+    </div>
+
+    <script>
+        // 防抖函数 (300ms)
+        const debounce = (fn, delay = 300) => {
+            let timeout;
+            return (...args) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => fn.apply(this, args), delay);
+            };
+        };
+
+        // 校验状态管理
+        const validationStates = {
+            username: { valid: false, checking: false },
+            phone: { valid: false, checking: false }
+        };
+
+        // 用户名查重 (带防抖)
+        const debouncedCheckUsername = debounce(async () => {
+            const username = document.getElementById('username').value.trim();
+            const errorElement = document.getElementById('username-error');
+            const statusElement = document.querySelector('#username + .validation-status');
+
+            if (!username) {
+                showValidation(statusElement, errorElement, '用户名不能为空');
+                validationStates.username.valid = false;
+                return;
+            }
+
+            validationStates.username.checking = true;
+            statusElement.style.display = 'block';
+            statusElement.className = 'validation-status checking';
+
+            try {
+                const response = await fetch(
+                    `http://localhost:2025/login/findAccountUsername?username=${encodeURIComponent(username)}`
+                );
+
+                const exists = await response.json();
+
+                if (exists) {
+                    showValidation(statusElement, errorElement, '用户名已存在', ''); // 移除 invalid 类
+                    validationStates.username.valid = false;
+                } else {
+                    showValidation(statusElement, errorElement, '', 'valid');
+                    validationStates.username.valid = true;
+                }
+            } catch (error) {
+                showValidation(statusElement, errorElement, '校验服务不可用，请稍后重试');
+                validationStates.username.valid = false;
+            } finally {
+                validationStates.username.checking = false;
+            }
+        });
+
+        // 电话查重 (带防抖)
+        const debouncedCheckPhone = debounce(async () => {
+            const phone = document.getElementById('phone').value.trim();
+            const errorElement = document.getElementById('phone-error');
+            const statusElement = document.querySelector('#phone + .validation-status');
+
+            if (!phone) {
+                showValidation(statusElement, errorElement, '联系电话不能为空');
+                validationStates.phone.valid = false;
+                return;
+            }
+
+            if (!/^1[3-9]\d{9}$/.test(phone)) {
+                showValidation(statusElement, errorElement, '请输入有效的手机号码');
+                validationStates.phone.valid = false;
+                return;
+            }
+
+            validationStates.phone.checking = true;
+            statusElement.style.display = 'block';
+            statusElement.className = 'validation-status checking';
+
+            try {
+                const response = await fetch(
+                    `http://localhost:2025/login/findAccountPhone?phone=${encodeURIComponent(phone)}`
+                );
+
+                const exists = await response.json();
+
+                if (exists) {
+                    showValidation(statusElement, errorElement, '手机号已注册', ''); // 移除 invalid 类
+                    validationStates.phone.valid = false;
+                } else {
+                    showValidation(statusElement, errorElement, '', 'valid');
+                    validationStates.phone.valid = true;
+                }
+            } catch (error) {
+                showValidation(statusElement, errorElement, '校验服务不可用，请稍后重试');
+                validationStates.phone.valid = false;
+            } finally {
+                validationStates.phone.checking = false;
+            }
+        });
+
+        // 创建本地时间格式化函数
+        function getLocalDateTime() {
+            const now = new Date();
+
+            return [
+                [
+                    now.getFullYear(),
+                    String(now.getMonth() + 1).padStart(2, '0'), // 月份补零
+                    String(now.getDate()).padStart(2, '0')        // 日期补零
+                ].join('-'),
+                [
+                    String(now.getHours()).padStart(2, '0'),      // 小时补零
+                    String(now.getMinutes()).padStart(2, '0'),    // 分钟补零
+                    String(now.getSeconds()).padStart(2, '0')     // 秒数补零
+                ].join(':')
+            ].join(' ');
+        }
+
+        // 注册处理
+        async function handleRegister() {
+            const btn = document.getElementById('register-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loader"></div> 注册中...';
+
+            const userData = {
+                username: document.getElementById('username').value.trim(),
+                password: document.getElementById('password').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                createdAt: getLocalDateTime() // 输出示例：2025-03-10 16:10:34
+            };
+            console.log(userData)
+            console.log(getLocalDateTime())
+
+            // 前端验证
+            if (!validateForm(userData)) {
+                btn.disabled = false;
+                btn.innerHTML = '立即注册';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:2025/login/accountRegister', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(userData)
+                });
+
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                alert('注册成功，正在跳转登录页面');
+                window.location.href = 'login.html';
+            } catch (error) {
+                alert(`注册失败: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '立即注册';
+            }
+        }
+
+        // 辅助函数
+        function showValidation(statusElement, errorElement, message, statusClass = '') {
+            statusElement.className = `validation-status ${statusClass}`;
+            statusElement.style.display = statusClass ? 'block' : 'none'; // 仅当有状态类时显示图标
+            errorElement.textContent = message;
+            errorElement.style.display = message ? 'block' : 'none';
+        }
+
+        function validateForm(data) {
+            let isValid = true;
+
+            // 密码校验
+            if (data.password.length < 6) {
+                document.getElementById('password-error').textContent = '密码至少需要6位';
+                document.getElementById('password-error').style.display = 'block';
+                isValid = false;
+            }
+
+            // 用户名校验状态
+            if (!validationStates.username.valid) {
+                document.getElementById('username-error').textContent = '请完成用户名校验';
+                document.getElementById('username-error').style.display = 'block';
+                isValid = false;
+            }
+
+            // 手机号校验
+            if (!validationStates.phone.valid) {
+                document.getElementById('phone-error').textContent = '请完成手机号校验';
+                document.getElementById('phone-error').style.display = 'block';
+                isValid = false;
+            }
+
+            return isValid;
+        }
+    </script>
+
+    <style>
+        :root {
+            --primary: #5B8FF9;
+            --secondary: #FF9A3E;
+            --bg: #FFFFFF;
+            /* 白色背景 */
+            --text: #2C3E50;
+            --radius-lg: 1.5rem;
+            --shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: var(--bg);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+        }
+
+        .auth-container {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            width: 380px;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            cursor: pointer;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 1rem;
+            padding-right: 0px;
+            margin-left: -10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 0.8rem;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 0.8rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #4D7CFE;
+            transform: translateY(-2px);
+        }
+
+        .nav-link {
+            text-align: center;
+            margin-top: 1rem;
+            color: #666;
+        }
+
+        .nav-link a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        /* 新增校验状态样式 */
+        .validation-status {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            background-size: contain;
+            display: none;
+        }
+
+        .valid {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%234CAF50"><path d="M0 0h24v24H0z" fill="none"/><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>');
+        }
+
+        .invalid {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23F44336"><path d="M0 0h24v24H0z" fill="none"/><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>');
+        }
+
+        /* 错误提示样式增强 */
+        .error-message {
+            color: #f44336;
+            font-size: 0.9em;
+            margin-top: 0.5rem;
+            display: none;
+        }
+
+        .form-group {
+            position: relative;
+            margin-bottom: 1.8rem;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</body>
+
+</html>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.dd_ai_end.mapper.SentimentMapper">
+    <insert id="insertSentiment" parameterType="com.example.dd_ai_end.entity.Sentiment" useGeneratedKeys="true" keyProperty="sentimentId">
+        INSERT INTO sentiment (sentiment_kind, sentiment_score)
+        VALUES (#{sentimentKind}, #{sentimentScore})
+    </insert>
+</mapper>
